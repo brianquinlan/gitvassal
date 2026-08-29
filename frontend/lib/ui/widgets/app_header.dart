@@ -1,24 +1,35 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../services/auth_service.dart';
+import '../../state/app_state.dart';
 import '../theme.dart';
 import 'settings_dialog.dart';
 
-/// Top application header bar containing the application title, settings icon, and user profile icon.
+/// Top application navigation bar matching the TaskVassal header design.
 class AppHeader extends StatelessWidget {
   final User user;
+  final VoidCallback? onMenuToggle;
 
-  const AppHeader({
-    super.key,
-    required this.user,
-  });
+  const AppHeader({super.key, required this.user, this.onMenuToggle});
+
+  void _openNewIssue(BuildContext context) async {
+    // If user has a monitored repo or default, open GitHub new issue page
+    final Uri url = Uri.parse('https://github.com/issues');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+
     return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -27,12 +38,21 @@ class AppHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Application Title
+          if (onMenuToggle != null) ...[
+            IconButton(
+              icon: const Icon(Icons.menu, color: AppTheme.textPrimary),
+              onPressed: onMenuToggle,
+              tooltip: 'Toggle Menu',
+            ),
+            const SizedBox(width: 8),
+          ],
+
+          // Brand Logo & Title
           Row(
             children: [
               Container(
-                width: 30,
-                height: 30,
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
                   color: AppTheme.primaryBlue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
@@ -40,25 +60,126 @@ class AppHeader extends StatelessWidget {
                 child: const Icon(
                   Icons.task_alt,
                   color: AppTheme.primaryBlue,
-                  size: 20,
+                  size: 18,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Text(
                 'TaskVassal',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
-                    ),
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
               ),
             ],
           ),
 
+          const SizedBox(width: 32),
+
+          // Navigation Tabs: Dashboard, Issues, Pull Requests
+          _buildNavTab(
+            context: context,
+            tab: NavTab.dashboard,
+            label: 'Dashboard',
+            isSelected: appState.selectedTab == NavTab.dashboard,
+            onTap: () => appState.setSelectedTab(NavTab.dashboard),
+          ),
+          const SizedBox(width: 20),
+          _buildNavTab(
+            context: context,
+            tab: NavTab.issues,
+            label: 'Issues',
+            isSelected: appState.selectedTab == NavTab.issues,
+            onTap: () => appState.setSelectedTab(NavTab.issues),
+          ),
+          const SizedBox(width: 20),
+          _buildNavTab(
+            context: context,
+            tab: NavTab.pullRequests,
+            label: 'Pull Requests',
+            isSelected: appState.selectedTab == NavTab.pullRequests,
+            onTap: () => appState.setSelectedTab(NavTab.pullRequests),
+          ),
+
           const Spacer(),
+
+          // Search Bar
+          SizedBox(
+            width: 240,
+            height: 36,
+            child: TextField(
+              onChanged: (value) => appState.setSearchQuery(value),
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'Search...',
+                prefixIcon: const Icon(
+                  Icons.search,
+                  size: 18,
+                  color: AppTheme.textPlaceholder,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 0,
+                  horizontal: 10,
+                ),
+                fillColor: const Color(0xFFF3F4F6),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: AppTheme.borderMedium),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: const BorderSide(color: AppTheme.borderSubtle),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // New Issue Button
+          ElevatedButton.icon(
+            onPressed: () => _openNewIssue(context),
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('New Issue'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryBlue,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              textStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // Notifications Bell Icon
+          IconButton(
+            icon: const Icon(
+              Icons.notifications_none_outlined,
+              color: AppTheme.textSecondary,
+              size: 20,
+            ),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('No unread notifications.')),
+              );
+            },
+            tooltip: 'Notifications',
+          ),
 
           // Settings Gear Icon
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: AppTheme.textSecondary, size: 20),
+            icon: const Icon(
+              Icons.settings_outlined,
+              color: AppTheme.textSecondary,
+              size: 20,
+            ),
             onPressed: () => SettingsDialog.show(context, user.uid),
             tooltip: 'Settings',
           ),
@@ -69,7 +190,9 @@ class AppHeader extends StatelessWidget {
           PopupMenuButton<String>(
             tooltip: 'Account Settings',
             offset: const Offset(0, 48),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
             onSelected: (value) {
               if (value == 'settings') {
                 SettingsDialog.show(context, user.uid);
@@ -80,10 +203,14 @@ class AppHeader extends StatelessWidget {
             child: CircleAvatar(
               radius: 16,
               backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.15),
-              backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
+              backgroundImage: user.photoURL != null
+                  ? NetworkImage(user.photoURL!)
+                  : null,
               child: user.photoURL == null
                   ? Text(
-                      (user.email ?? user.displayName ?? 'U').substring(0, 1).toUpperCase(),
+                      (user.email ?? user.displayName ?? 'U')
+                          .substring(0, 1)
+                          .toUpperCase(),
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -100,11 +227,17 @@ class AppHeader extends StatelessWidget {
                   children: [
                     Text(
                       user.displayName ?? 'Authenticated User',
-                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
                     Text(
                       user.email ?? user.uid,
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textMuted,
+                      ),
                     ),
                   ],
                 ),
@@ -114,7 +247,11 @@ class AppHeader extends StatelessWidget {
                 value: 'settings',
                 child: Row(
                   children: [
-                    Icon(Icons.settings_outlined, size: 18, color: AppTheme.textSecondary),
+                    Icon(
+                      Icons.settings_outlined,
+                      size: 18,
+                      color: AppTheme.textSecondary,
+                    ),
                     SizedBox(width: 10),
                     Text('Settings'),
                   ],
@@ -133,6 +270,38 @@ class AppHeader extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNavTab({
+    required BuildContext context,
+    required NavTab tab,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      hoverColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isSelected ? AppTheme.primaryBlue : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? AppTheme.primaryBlue : AppTheme.textSecondary,
+          ),
+        ),
       ),
     );
   }

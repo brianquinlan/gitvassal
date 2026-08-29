@@ -24,6 +24,7 @@ class Task(BaseModel):
 
     priority: float = 0.0  # A priority value between 0.0 and 1.0
     priority_needs_updated: bool = True
+    is_pr: bool = False
     owner: str | None = None
     repo: str | None = None
     issue_number: int | None = None
@@ -95,6 +96,7 @@ def ensure_task_for_issue(
     repo = str(issue_data.get("repo")) if issue_data.get("repo") is not None else None
     raw_num = issue_data.get("issue_number") or issue_data.get("number")
     issue_number = int(raw_num) if isinstance(raw_num, (int, str)) and str(raw_num).isdigit() else None
+    is_pr = bool(issue_data.get("is_pr", False))
 
     if doc_snap.exists:
         raw_dict = doc_snap.to_dict()
@@ -102,6 +104,7 @@ def ensure_task_for_issue(
             raw_dict = {}
         task = Task.model_validate(raw_dict)
         task.priority_needs_updated = True
+        task.is_pr = is_pr or task.is_pr
         task.github_issue_title = issue_title or task.github_issue_title
         task.github_issue_url = issue_url or task.github_issue_url
         task.owner = owner or task.owner
@@ -113,6 +116,7 @@ def ensure_task_for_issue(
         task = Task(
             priority=0.0,
             priority_needs_updated=True,
+            is_pr=is_pr,
             owner=owner,
             repo=repo,
             issue_number=issue_number,

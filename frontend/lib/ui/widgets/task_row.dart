@@ -77,9 +77,13 @@ class _TaskRowState extends State<TaskRow> {
     final appState = context.watch<AppState>();
     final isRefreshing = appState.isTaskRefreshing(widget.task.id) || widget.task.priorityNeedsUpdated;
 
-    // Red dot for high-priority or needs update, Blue dot for normal
-    final isHighPriority = widget.task.isHighPriority || widget.task.priorityNeedsUpdated;
-    final dotColor = isHighPriority ? AppTheme.dotRed : AppTheme.dotBlue;
+    // Check if task is a Pull Request or regular Issue using is_pr from Firestore
+    final isPR = widget.task.isPr;
+    final IconData typeIcon = isPR ? Icons.merge_type : Icons.adjust;
+    final String typeTooltip = isPR ? 'Pull Request' : 'Issue';
+    final Color iconColor = widget.task.priorityNeedsUpdated
+        ? AppTheme.dotRed
+        : const Color(0xFF1A7F37);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -95,27 +99,18 @@ class _TaskRowState extends State<TaskRow> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Issue Column (Status dot + Title)
+            // Issue Column (PR/Issue Icon + Title)
             Expanded(
               flex: 5,
               child: Row(
                 children: [
-                  // Status dot indicator
-                  Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: dotColor, width: 2),
-                    ),
-                    alignment: Alignment.center,
-                    child: Container(
-                      width: 4,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: dotColor,
-                      ),
+                  // PR vs Issue Icon
+                  Tooltip(
+                    message: typeTooltip,
+                    child: Icon(
+                      typeIcon,
+                      size: 18,
+                      color: iconColor,
                     ),
                   ),
                   const SizedBox(width: 12),

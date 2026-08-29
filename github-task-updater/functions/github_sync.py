@@ -159,12 +159,14 @@ def process_and_save_issue_page(
             delete_task_for_issue(uid=uid, issue_id=doc_id, db=db)
             continue
 
+        is_pr = bool(issue.pull_request is not None)
         issue_payload: dict[str, object] = {
             "title": issue.title,
             "url": issue.html_url or "",
             "owner": owner,
             "repo": repo,
             "issue_number": issue_number,
+            "is_pr": is_pr,
         }
 
         # Create/update Task directly in Firestore

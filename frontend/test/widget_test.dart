@@ -10,6 +10,7 @@ void main() {
         id: 'task_google_flutter_100',
         priority: 0.85,
         priorityNeedsUpdated: false,
+        isPr: false,
         owner: 'google',
         repo: 'flutter',
         issueNumber: 100,
@@ -22,6 +23,7 @@ void main() {
       expect(task.repoFullName, equals('google/flutter'));
       expect(task.displayTitle, equals('Fix memory leak in engine'));
       expect(task.isHighPriority, isTrue);
+      expect(task.isPr, isFalse);
       expect(task.inferredBadge, equals('bug'));
       expect(task.formattedTimeAgo, equals('2 days ago'));
       expect(task.subtitleInfo, contains('#100'));
@@ -31,6 +33,29 @@ void main() {
       expect(map['owner'], equals('google'));
       expect(map['repo'], equals('flutter'));
       expect(map['priority'], equals(0.85));
+      expect(map['is_pr'], isFalse);
+    });
+
+    test('TaskModel distinguishes Pull Requests from Issues using is_pr', () {
+      final prTask = TaskModel(
+        id: 'pr_1',
+        priority: 0.5,
+        priorityNeedsUpdated: false,
+        isPr: true,
+        githubIssueTitle: 'Add HTTP/3 client support',
+        githubIssueUrl: 'https://github.com/dart-lang/http/pull/1024',
+      );
+      expect(prTask.isPr, isTrue);
+
+      final issueTask = TaskModel(
+        id: 'issue_1',
+        priority: 0.5,
+        priorityNeedsUpdated: false,
+        isPr: false,
+        githubIssueTitle: 'Bug in HTTP/3 client',
+        githubIssueUrl: 'https://github.com/dart-lang/http/issues/1024',
+      );
+      expect(issueTask.isPr, isFalse);
     });
 
     test('TaskModel inferred badges work for various issue types', () {

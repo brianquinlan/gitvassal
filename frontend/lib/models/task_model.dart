@@ -5,6 +5,7 @@ class TaskModel {
   final String id;
   final double priority;
   final bool priorityNeedsUpdated;
+  final bool isPr;
   final String? owner;
   final String? repo;
   final int? issueNumber;
@@ -18,6 +19,7 @@ class TaskModel {
     required this.id,
     required this.priority,
     required this.priorityNeedsUpdated,
+    this.isPr = false,
     this.owner,
     this.repo,
     this.issueNumber,
@@ -60,6 +62,7 @@ class TaskModel {
       id: doc.id,
       priority: parsePriority(data['priority']),
       priorityNeedsUpdated: data['priority_needs_updated'] == true,
+      isPr: data['is_pr'] == true,
       owner: data['owner']?.toString(),
       repo: data['repo']?.toString(),
       issueNumber: data['issue_number'] is int
@@ -98,7 +101,11 @@ class TaskModel {
     final timeStr = formattedTimeAgo;
     final ownerStr = owner != null ? 'by $owner' : '';
 
-    final parts = [numStr, timeStr, ownerStr].where((p) => p.isNotEmpty).toList();
+    final parts = [
+      numStr,
+      timeStr,
+      ownerStr,
+    ].where((p) => p.isNotEmpty).toList();
     return parts.join(' ');
   }
 
@@ -123,10 +130,15 @@ class TaskModel {
   /// Primary label/category derived from sources or title.
   String get inferredBadge {
     final titleLower = (githubIssueTitle ?? '').toLowerCase();
-    if (titleLower.contains('bug') || titleLower.contains('fix') || titleLower.contains('error') || titleLower.contains('leak')) {
+    if (titleLower.contains('bug') ||
+        titleLower.contains('fix') ||
+        titleLower.contains('error') ||
+        titleLower.contains('leak')) {
       return 'bug';
     }
-    if (titleLower.contains('feat') || titleLower.contains('support') || titleLower.contains('add')) {
+    if (titleLower.contains('feat') ||
+        titleLower.contains('support') ||
+        titleLower.contains('add')) {
       return 'enhancement';
     }
     if (titleLower.contains('doc') || titleLower.contains('guide')) {
@@ -148,6 +160,7 @@ class TaskModel {
     return {
       'priority': priority,
       'priority_needs_updated': priorityNeedsUpdated,
+      'is_pr': isPr,
       'owner': owner,
       'repo': repo,
       'issue_number': issueNumber,
