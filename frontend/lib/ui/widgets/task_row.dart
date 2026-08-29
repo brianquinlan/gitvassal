@@ -6,7 +6,7 @@ import '../../services/firestore_service.dart';
 import '../../state/app_state.dart';
 import '../theme.dart';
 
-/// Single task row component in the TaskVassal Dashboard table.
+/// Single task row component in the TaskVassal list.
 class TaskRow extends StatefulWidget {
   final String uid;
   final TaskModel task;
@@ -77,9 +77,6 @@ class _TaskRowState extends State<TaskRow> {
     final appState = context.watch<AppState>();
     final isRefreshing = appState.isTaskRefreshing(widget.task.id) || widget.task.priorityNeedsUpdated;
 
-    final badge = widget.task.inferredBadge;
-    final (badgeBg, badgeText) = _getBadgeColors(badge);
-
     // Red dot for high-priority or needs update, Blue dot for normal
     final isHighPriority = widget.task.isHighPriority || widget.task.priorityNeedsUpdated;
     final dotColor = isHighPriority ? AppTheme.dotRed : AppTheme.dotBlue;
@@ -94,108 +91,49 @@ class _TaskRowState extends State<TaskRow> {
             bottom: BorderSide(color: AppTheme.borderSubtle, width: 1),
           ),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Issue Column (Expanded)
+            // Issue Column (Status dot + Title)
             Expanded(
               flex: 5,
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Status dot indicator
-                  Padding(
-                    padding: const EdgeInsets.only(top: 3, right: 12),
+                  Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: dotColor, width: 2),
+                    ),
+                    alignment: Alignment.center,
                     child: Container(
-                      width: 14,
-                      height: 14,
+                      width: 4,
+                      height: 4,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: dotColor, width: 2),
-                      ),
-                      alignment: Alignment.center,
-                      child: Container(
-                        width: 4,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: dotColor,
-                        ),
+                        color: dotColor,
                       ),
                     ),
                   ),
+                  const SizedBox(width: 12),
 
-                  // Title + Badges + Metadata
+                  // Clickable Title
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Clickable Title
-                        InkWell(
-                          onTap: _openIssueUrl,
-                          child: Text(
-                            widget.task.displayTitle,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textPrimary,
-                              decoration: _isHovered ? TextDecoration.underline : TextDecoration.none,
-                            ),
-                          ),
+                    child: InkWell(
+                      onTap: _openIssueUrl,
+                      child: Text(
+                        widget.task.displayTitle,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                          decoration: _isHovered ? TextDecoration.underline : TextDecoration.none,
                         ),
-                        const SizedBox(height: 6),
-
-                        // Badge + Subtitle Info
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: badgeBg,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                badge,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: badgeText,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                widget.task.subtitleInfo,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.textMuted,
-                                ),
-                              ),
-                            ),
-                            if (widget.task.priority > 0) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF3F4F6),
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                                child: Text(
-                                  'Score: ${(widget.task.priority * 100).toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppTheme.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
@@ -268,24 +206,5 @@ class _TaskRowState extends State<TaskRow> {
         ),
       ),
     );
-  }
-
-  (Color, Color) _getBadgeColors(String badge) {
-    switch (badge.toLowerCase()) {
-      case 'bug':
-      case 'high-priority':
-        return (AppTheme.badgeBugBg, AppTheme.badgeBugText);
-      case 'enhancement':
-      case 'feat':
-        return (AppTheme.badgeEnhancementBg, AppTheme.badgeEnhancementText);
-      case 'docs':
-        return (AppTheme.badgeDocsBg, AppTheme.badgeDocsText);
-      case 'assigned':
-      case 'mentioned':
-      case 'created':
-        return (AppTheme.badgePurpleBg, AppTheme.badgePurpleText);
-      default:
-        return (const Color(0xFFF3F4F6), AppTheme.textSecondary);
-    }
   }
 }
