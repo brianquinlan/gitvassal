@@ -1,0 +1,127 @@
+# ============================================================================
+# GitVassal Root .gitignore
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Python & Virtual Environments
+# ----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Python test, lint, and type check caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.pytype/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+htmlcov/
+
+# ----------------------------------------------------------------------------
+# Firebase & Cloud Functions
+# ----------------------------------------------------------------------------
+*-debug.log
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+pubsub-debug.log*
+database-debug.log*
+hosting-debug.log*
+.runtimeconfig.json
+.firebaserc.local
+
+# ----------------------------------------------------------------------------
+# Flutter & Dart (Frontend)
+# ----------------------------------------------------------------------------
+**/doc/api/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.pub/
+**/build/
+**/coverage/
+.widget_preview/
+
+# Flutter symbolication / obfuscation
+app.*.symbols
+app.*.map.json
+
+# Native mobile build outputs
+frontend/android/app/debug/
+frontend/android/app/profile/
+frontend/android/app/release/
+frontend/ios/Flutter/.last_build_id
+frontend/ios/Flutter/ephemeral/
+frontend/ios/Pods/
+frontend/macos/Flutter/ephemeral/
+frontend/macos/Pods/
+
+# ----------------------------------------------------------------------------
+# Secrets & Environment Variables
+# ----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+service-account*.json
+*-credentials.json
+
+# ----------------------------------------------------------------------------
+# Operating System & IDE Files
+# ----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Editors & IDEs
+*.swp
+*.swo
+*~
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.cproject
+.settings/
+.history/
