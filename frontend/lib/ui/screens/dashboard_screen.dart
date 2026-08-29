@@ -4,11 +4,10 @@ import 'package:provider/provider.dart';
 import '../../models/task_model.dart';
 import '../../services/firestore_service.dart';
 import '../../state/app_state.dart';
-import '../theme.dart';
 import '../widgets/app_header.dart';
 import '../widgets/task_table.dart';
 
-/// Main Dashboard Screen displaying the TaskVassal UI across the full width.
+/// Main Dashboard Screen displaying the TaskVassal scrollable list directly under the top bar.
 class DashboardScreen extends StatelessWidget {
   final User user;
 
@@ -20,14 +19,14 @@ class DashboardScreen extends StatelessWidget {
     final appState = context.watch<AppState>();
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
             // Top App Header with App Title, Settings Icon, and User Profile Icon
             AppHeader(user: user),
 
-            // Realtime Firestore Stream for Tasks
+            // Directly scrollable list of tasks filling the screen
             Expanded(
               child: StreamBuilder<List<TaskModel>>(
                 stream: firestoreService.streamTasks(user.uid),
@@ -37,21 +36,10 @@ class DashboardScreen extends StatelessWidget {
                   final allTasks = taskSnapshot.data ?? [];
                   final filteredTasks = appState.filterTasks(allTasks);
 
-                  return Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1200),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 24,
-                        ),
-                        child: TaskTable(
-                          uid: user.uid,
-                          tasks: filteredTasks,
-                          isLoading: isLoading,
-                        ),
-                      ),
-                    ),
+                  return TaskTable(
+                    uid: user.uid,
+                    tasks: filteredTasks,
+                    isLoading: isLoading,
                   );
                 },
               ),
