@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tasks</title>
+  <style>
+    header {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  {% if is_authenticated %}
+    <header>
+      <span>{{ user.email or user.display_name or user.uid }}</span>
+      <form method="POST" action="/" style="display: inline; margin: 0;">
+        <button type="submit" name="action" value="sync">Sync GitHub Issues</button>
+      </form>
+      <form method="POST" action="/" style="display: inline; margin: 0;">
+        <button type="submit" name="action" value="rerank">Rerank All</button>
+      </form>
+      <a href="/settings">Settings</a>
+      <button id="btn-logout">Sign Out</button>
+    </header>
+
+    <h2>Tasks ({{ tasks|length }})</h2>
+
+    {% if tasks %}
+      <table>
+        <thead>
+          <tr>
+            <th>Issue</th>
+            <th>Priority</th>
+            <th>Issue Title</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for task in tasks %}
+            <tr>
+              <td>{{ (task.owner ~ "/" ~ task.repo ~ "#" ~ task.issue_number) if (task.owner and task.repo and task.issue_number) else (task.id or "") }}</td>
+              <td>{{ "%.2f"|format(task.priority or 0.0) }}</td>
+              <td>
+                <a href="{{ task.github_issue_url or '#' }}" target="_blank" rel="noopener noreferrer">
+                  {{ task.github_issue_title or "Untitled Task" }}
+                </a>
+              </td>
+              <td>{{ "Needs Rerank" if task.priority_needs_updated else "Ranked" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No tasks found in Firestore. Configure your GitHub token in <a href="/settings">Settings</a> to sync issues.</p>
+    {% endif %}
+
+  {% else %}
+    <h2>Login</h2>
+    <p>Sign in to view your tasks.</p>
+    <button id="btn-login-google">Sign in with Google</button>
+    <button id="btn-login-github">Sign in with GitHub</button>
+  {% endif %}
+
+  <!-- Minimal JS for authentication only -->
+  <script type="module" src="/auth.js"></script>
+</body>
+</html>
