@@ -7,9 +7,6 @@ class UserSettingsModel {
   final String? githubUsername;
   final String? geminiApiKey;
   final List<String> monitoredRepos;
-  final DateTime? lastAssignedSync;
-  final DateTime? lastMentionedSync;
-  final DateTime? lastCreatedSync;
   final DateTime? updatedAt;
 
   UserSettingsModel({
@@ -18,9 +15,6 @@ class UserSettingsModel {
     this.githubUsername,
     this.geminiApiKey,
     this.monitoredRepos = const [],
-    this.lastAssignedSync,
-    this.lastMentionedSync,
-    this.lastCreatedSync,
     this.updatedAt,
   });
 
@@ -53,9 +47,6 @@ class UserSettingsModel {
       githubUsername: data['github_username']?.toString(),
       geminiApiKey: data['gemini_api_key']?.toString(),
       monitoredRepos: parseMonitoredRepos(data['monitored_repos']),
-      lastAssignedSync: parseDate(data['last_assigned_sync']),
-      lastMentionedSync: parseDate(data['last_mentioned_sync']),
-      lastCreatedSync: parseDate(data['last_created_sync']),
       updatedAt: parseDate(data['updated_at']),
     );
   }
@@ -77,29 +68,5 @@ class UserSettingsModel {
       'monitored_repos': reposMap,
       'updated_at': FieldValue.serverTimestamp(),
     };
-  }
-
-  UserSettingsModel copyWith({
-    String? uid,
-    String? githubAccessToken,
-    String? githubUsername,
-    String? geminiApiKey,
-    List<String>? monitoredRepos,
-    DateTime? lastAssignedSync,
-    DateTime? lastMentionedSync,
-    DateTime? lastCreatedSync,
-    DateTime? updatedAt,
-  }) {
-    return UserSettingsModel(
-      uid: uid ?? this.uid,
-      githubAccessToken: githubAccessToken ?? this.githubAccessToken,
-      githubUsername: githubUsername ?? this.githubUsername,
-      geminiApiKey: geminiApiKey ?? this.geminiApiKey,
-      monitoredRepos: monitoredRepos ?? this.monitoredRepos,
-      lastAssignedSync: lastAssignedSync ?? this.lastAssignedSync,
-      lastMentionedSync: lastMentionedSync ?? this.lastMentionedSync,
-      lastCreatedSync: lastCreatedSync ?? this.lastCreatedSync,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
   }
 }

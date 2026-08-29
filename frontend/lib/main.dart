@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
-import 'state/app_state.dart';
 import 'ui/screens/auth_screen.dart';
 import 'ui/screens/dashboard_screen.dart';
 import 'ui/theme.dart';
@@ -45,7 +44,6 @@ class TaskVassalApp extends StatelessWidget {
       providers: [
         Provider<AuthService>(create: (_) => AuthService()),
         Provider<FirestoreService>(create: (_) => FirestoreService()),
-        ChangeNotifierProvider<AppState>(create: (_) => AppState()),
       ],
       child: MaterialApp(
         title: 'TaskVassal',

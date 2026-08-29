@@ -34,7 +34,6 @@ class TaskModel {
   factory TaskModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
 
-    // Helper to safely parse DateTime from Timestamp, String, or int
     DateTime? parseDate(dynamic val) {
       if (val == null) return null;
       if (val is Timestamp) return val.toDate();
@@ -43,14 +42,12 @@ class TaskModel {
       return null;
     }
 
-    // Helper to safely parse double priority
     double parsePriority(dynamic val) {
       if (val is num) return val.toDouble();
       if (val is String) return double.tryParse(val) ?? 0.0;
       return 0.0;
     }
 
-    // Helper to parse sources
     List<String> parseSources(dynamic val) {
       if (val is List) {
         return val.map((e) => e.toString()).toList();
@@ -94,67 +91,6 @@ class TaskModel {
     }
     return 'GitHub Issue';
   }
-
-  /// Formatted metadata string e.g. "#1024 opened 2 days ago by jdoe".
-  String get subtitleInfo {
-    final numStr = issueNumber != null ? '#$issueNumber' : '';
-    final timeStr = formattedTimeAgo;
-    final ownerStr = owner != null ? 'by $owner' : '';
-
-    final parts = [
-      numStr,
-      timeStr,
-      ownerStr,
-    ].where((p) => p.isNotEmpty).toList();
-    return parts.join(' ');
-  }
-
-  /// Friendly time ago string.
-  String get formattedTimeAgo {
-    final date = createdAt ?? updatedAt;
-    if (date == null) return 'recently';
-    final diff = DateTime.now().difference(date);
-    if (diff.inDays > 30) {
-      return '${(diff.inDays / 30).floor()} months ago';
-    } else if (diff.inDays > 0) {
-      return '${diff.inDays} ${diff.inDays == 1 ? 'day' : 'days'} ago';
-    } else if (diff.inHours > 0) {
-      return '${diff.inHours} ${diff.inHours == 1 ? 'hour' : 'hours'} ago';
-    } else if (diff.inMinutes > 0) {
-      return '${diff.inMinutes} ${diff.inMinutes == 1 ? 'minute' : 'minutes'} ago';
-    } else {
-      return 'just now';
-    }
-  }
-
-  /// Primary label/category derived from sources or title.
-  String get inferredBadge {
-    final titleLower = (githubIssueTitle ?? '').toLowerCase();
-    if (titleLower.contains('bug') ||
-        titleLower.contains('fix') ||
-        titleLower.contains('error') ||
-        titleLower.contains('leak')) {
-      return 'bug';
-    }
-    if (titleLower.contains('feat') ||
-        titleLower.contains('support') ||
-        titleLower.contains('add')) {
-      return 'enhancement';
-    }
-    if (titleLower.contains('doc') || titleLower.contains('guide')) {
-      return 'docs';
-    }
-    if (priority >= 0.7) {
-      return 'high-priority';
-    }
-    if (sources.isNotEmpty) {
-      return sources.first;
-    }
-    return 'issue';
-  }
-
-  /// Whether this task is considered high priority.
-  bool get isHighPriority => priority >= 0.7;
 
   Map<String, dynamic> toMap() {
     return {

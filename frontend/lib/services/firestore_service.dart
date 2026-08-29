@@ -27,16 +27,6 @@ class FirestoreService {
     });
   }
 
-  /// Real-time stream of the user profile and settings document.
-  Stream<UserSettingsModel> streamUserSettings(String uid) {
-    return _firestore.collection('users').doc(uid).snapshots().map((doc) {
-      if (!doc.exists) {
-        return UserSettingsModel(uid: uid);
-      }
-      return UserSettingsModel.fromFirestore(doc);
-    });
-  }
-
   /// Fetches the user settings once.
   Future<UserSettingsModel> getUserSettings(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
@@ -66,29 +56,6 @@ class FirestoreService {
         .doc(taskId)
         .set({
       'priority_needs_updated': true,
-      'updated_at': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-  }
-
-  /// Marks all tasks for the user as needing rerank, and updates user profile timestamp.
-  /// Triggered when the user clicks "Refresh Sync" in the sidebar.
-  Future<void> markAllTasksNeedsRerank(String uid) async {
-    final tasksCol = _firestore.collection('users').doc(uid).collection('tasks');
-    final snapshot = await tasksCol.get();
-
-    if (snapshot.docs.isNotEmpty) {
-      final batch = _firestore.batch();
-      for (final doc in snapshot.docs) {
-        batch.set(doc.reference, {
-          'priority_needs_updated': true,
-          'updated_at': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      }
-      await batch.commit();
-    }
-
-    // Also touch updated_at on user profile to notify triggers if needed
-    await _firestore.collection('users').doc(uid).set({
       'updated_at': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

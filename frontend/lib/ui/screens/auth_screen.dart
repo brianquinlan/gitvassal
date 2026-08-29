@@ -140,13 +140,13 @@ class _AuthScreenState extends State<AuthScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppTheme.badgeBugBg,
+                      color: const Color(0xFFFEE2E2),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: AppTheme.dotRed.withValues(alpha: 0.3)),
                     ),
                     child: Text(
                       _errorMessage!,
-                      style: const TextStyle(fontSize: 12, color: AppTheme.badgeBugText),
+                      style: const TextStyle(fontSize: 12, color: Color(0xFFB91C1C)),
                     ),
                   ),
                   const SizedBox(height: 16),
