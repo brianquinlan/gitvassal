@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/task_model.dart';
 import '../../services/firestore_service.dart';
-import '../../state/app_state.dart';
 import '../theme.dart';
 
 /// Single task row component in the TaskVassal list.
@@ -23,6 +22,7 @@ class TaskRow extends StatefulWidget {
 
 class _TaskRowState extends State<TaskRow> {
   bool _isHovered = false;
+  bool _isRefreshing = false;
 
   void _openIssueUrl() async {
     final urlStr = widget.task.githubIssueUrl ??
@@ -39,12 +39,9 @@ class _TaskRowState extends State<TaskRow> {
   }
 
   Future<void> _handleRefresh() async {
-    final appState = context.read<AppState>();
-    final firestoreService = context.read<FirestoreService>();
-
-    appState.setTaskRefreshing(widget.task.id, true);
+    setState(() => _isRefreshing = true);
     try {
-      // Directly write priority_needs_updated = true to Firestore
+      final firestoreService = context.read<FirestoreService>();
       await firestoreService.markTaskNeedsRerank(widget.uid, widget.task.id);
 
       if (mounted) {
@@ -67,17 +64,15 @@ class _TaskRowState extends State<TaskRow> {
       }
     } finally {
       if (mounted) {
-        appState.setTaskRefreshing(widget.task.id, false);
+        setState(() => _isRefreshing = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
-    final isRefreshing = appState.isTaskRefreshing(widget.task.id) || widget.task.priorityNeedsUpdated;
+    final isRefreshing = _isRefreshing || widget.task.priorityNeedsUpdated;
 
-    // Check if task is a Pull Request or regular Issue using is_pr from Firestore
     final isPR = widget.task.isPr;
     final IconData typeIcon = isPR ? Icons.merge_type : Icons.adjust;
     final String typeTooltip = isPR ? 'Pull Request' : 'Issue';
@@ -104,7 +99,6 @@ class _TaskRowState extends State<TaskRow> {
               flex: 5,
               child: Row(
                 children: [
-                  // PR vs Issue Icon
                   Tooltip(
                     message: typeTooltip,
                     child: Icon(
