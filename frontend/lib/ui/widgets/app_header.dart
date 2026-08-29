@@ -5,22 +5,20 @@ import '../../services/auth_service.dart';
 import '../theme.dart';
 import 'settings_dialog.dart';
 
-/// Top application header bar containing only the settings icon and user profile icon.
+/// Top application header bar containing the application title, settings icon, and user profile icon.
 class AppHeader extends StatelessWidget {
   final User user;
-  final VoidCallback? onMenuToggle;
 
   const AppHeader({
     super.key,
     required this.user,
-    this.onMenuToggle,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      height: 60,
+      padding: const EdgeInsets.symmetric(horizontal: 32),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -29,13 +27,32 @@ class AppHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          if (onMenuToggle != null) ...[
-            IconButton(
-              icon: const Icon(Icons.menu, color: AppTheme.textPrimary),
-              onPressed: onMenuToggle,
-              tooltip: 'Toggle Menu',
-            ),
-          ],
+          // Application Title
+          Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.task_alt,
+                  color: AppTheme.primaryBlue,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'TaskVassal',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary,
+                    ),
+              ),
+            ],
+          ),
 
           const Spacer(),
 
