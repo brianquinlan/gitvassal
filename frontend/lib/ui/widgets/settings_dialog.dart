@@ -25,7 +25,6 @@ class SettingsDialog extends StatefulWidget {
 class _SettingsDialogState extends State<SettingsDialog> {
   final _formKey = GlobalKey<FormState>();
   final _tokenController = TextEditingController();
-  final _usernameController = TextEditingController();
   final _geminiKeyController = TextEditingController();
   final _newRepoController = TextEditingController();
 
@@ -48,7 +47,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
       if (mounted) {
         setState(() {
           _tokenController.text = settings.githubAccessToken ?? '';
-          _usernameController.text = settings.githubUsername ?? '';
           _geminiKeyController.text = settings.geminiApiKey ?? '';
           _monitoredRepos = List<String>.from(settings.monitoredRepos);
           _isLoading = false;
@@ -64,7 +62,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
   @override
   void dispose() {
     _tokenController.dispose();
-    _usernameController.dispose();
     _geminiKeyController.dispose();
     _newRepoController.dispose();
     super.dispose();
@@ -96,7 +93,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
       final updatedSettings = UserSettingsModel(
         uid: widget.uid,
         githubAccessToken: _tokenController.text.trim().isEmpty ? null : _tokenController.text.trim(),
-        githubUsername: _usernameController.text.trim().isEmpty ? null : _usernameController.text.trim(),
         geminiApiKey: _geminiKeyController.text.trim().isEmpty ? null : _geminiKeyController.text.trim(),
         monitoredRepos: _monitoredRepos,
       );
@@ -210,27 +206,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 16),
-
-                            // GitHub Username
-                            Text(
-                              'GitHub Username',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Used by the backend to identify assigned and mentioned issues.',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _usernameController,
-                              decoration: const InputDecoration(
-                                hintText: 'e.g. octocat',
-                                prefixIcon: Icon(Icons.alternate_email, size: 18, color: AppTheme.textMuted),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 20),
 
                             // Gemini API Key
                             Text(
