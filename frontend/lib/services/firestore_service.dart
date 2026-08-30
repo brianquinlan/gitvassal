@@ -27,6 +27,26 @@ class FirestoreService {
     });
   }
 
+  /// Fetches a paginated page of prioritized tasks for the authenticated user.
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchTasksPage({
+    required String uid,
+    int limit = 20,
+    DocumentSnapshot? startAfter,
+  }) async {
+    var query = _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('tasks')
+        .orderBy('priority', descending: true)
+        .limit(limit);
+
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+
+    return await query.get();
+  }
+
   /// Fetches the user settings once.
   Future<UserSettingsModel> getUserSettings(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
