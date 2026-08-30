@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../models/user_settings_model.dart';
 import '../../services/firestore_service.dart';
 import '../theme.dart';
@@ -26,9 +27,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
   final _formKey = GlobalKey<FormState>();
   final _tokenController = TextEditingController();
   final _geminiKeyController = TextEditingController();
-  final _newRepoController = TextEditingController();
+  final _reposController = TextEditingController();
 
-  List<String> _monitoredRepos = [];
   bool _isLoading = true;
   bool _isSaving = false;
   bool _obscureToken = true;
@@ -48,7 +48,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
         setState(() {
           _tokenController.text = settings.githubAccessToken ?? '';
           _geminiKeyController.text = settings.geminiApiKey ?? '';
-          _monitoredRepos = List<String>.from(settings.monitoredRepos);
+          _reposController.text = settings.monitoredRepos.join(', ');
           _isLoading = false;
         });
       }
@@ -63,25 +63,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
   void dispose() {
     _tokenController.dispose();
     _geminiKeyController.dispose();
-    _newRepoController.dispose();
+    _reposController.dispose();
     super.dispose();
-  }
-
-  void _addRepo() {
-    final text = _newRepoController.text.trim();
-    if (text.isEmpty) return;
-    if (!_monitoredRepos.contains(text)) {
-      setState(() {
-        _monitoredRepos.add(text);
-        _newRepoController.clear();
-      });
-    }
-  }
-
-  void _removeRepo(String repo) {
-    setState(() {
-      _monitoredRepos.remove(repo);
-    });
   }
 
   Future<void> _saveSettings() async {
@@ -90,11 +73,23 @@ class _SettingsDialogState extends State<SettingsDialog> {
     setState(() => _isSaving = true);
     try {
       final firestoreService = context.read<FirestoreService>();
+
+      // Parse comma-separated monitored repositories
+      final monitoredRepos = _reposController.text
+          .split(',')
+          .map((r) => r.trim())
+          .where((r) => r.isNotEmpty)
+          .toList();
+
       final updatedSettings = UserSettingsModel(
         uid: widget.uid,
-        githubAccessToken: _tokenController.text.trim().isEmpty ? null : _tokenController.text.trim(),
-        geminiApiKey: _geminiKeyController.text.trim().isEmpty ? null : _geminiKeyController.text.trim(),
-        monitoredRepos: _monitoredRepos,
+        githubAccessToken: _tokenController.text.trim().isEmpty
+            ? null
+            : _tokenController.text.trim(),
+        geminiApiKey: _geminiKeyController.text.trim().isEmpty
+            ? null
+            : _geminiKeyController.text.trim(),
+        monitoredRepos: monitoredRepos,
       );
 
       await firestoreService.updateUserSettings(widget.uid, updatedSettings);
@@ -150,7 +145,11 @@ class _SettingsDialogState extends State<SettingsDialog> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.settings_outlined, color: AppTheme.textPrimary, size: 22),
+                            const Icon(
+                              Icons.settings_outlined,
+                              color: AppTheme.textPrimary,
+                              size: 22,
+                            ),
                             const SizedBox(width: 10),
                             Text(
                               'User Settings',
@@ -159,7 +158,11 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           ],
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close, size: 20, color: AppTheme.textMuted),
+                          icon: const Icon(
+                            Icons.close,
+                            size: 20,
+                            color: AppTheme.textMuted,
+                          ),
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                       ],
@@ -195,14 +198,22 @@ class _SettingsDialogState extends State<SettingsDialog> {
                               obscureText: _obscureToken,
                               decoration: InputDecoration(
                                 hintText: 'ghp_xxxxxxxxxxxxxxxxxxxx',
-                                prefixIcon: const Icon(Icons.key_outlined, size: 18, color: AppTheme.textMuted),
+                                prefixIcon: const Icon(
+                                  Icons.key_outlined,
+                                  size: 18,
+                                  color: AppTheme.textMuted,
+                                ),
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscureToken ? Icons.visibility_off : Icons.visibility,
+                                    _obscureToken
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
                                     size: 18,
                                     color: AppTheme.textMuted,
                                   ),
-                                  onPressed: () => setState(() => _obscureToken = !_obscureToken),
+                                  onPressed: () => setState(
+                                    () => _obscureToken = !_obscureToken,
+                                  ),
                                 ),
                               ),
                             ),
@@ -224,14 +235,23 @@ class _SettingsDialogState extends State<SettingsDialog> {
                               obscureText: _obscureGeminiKey,
                               decoration: InputDecoration(
                                 hintText: 'AIzaSy...',
-                                prefixIcon: const Icon(Icons.auto_awesome_outlined, size: 18, color: AppTheme.textMuted),
+                                prefixIcon: const Icon(
+                                  Icons.auto_awesome_outlined,
+                                  size: 18,
+                                  color: AppTheme.textMuted,
+                                ),
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscureGeminiKey ? Icons.visibility_off : Icons.visibility,
+                                    _obscureGeminiKey
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
                                     size: 18,
                                     color: AppTheme.textMuted,
                                   ),
-                                  onPressed: () => setState(() => _obscureGeminiKey = !_obscureGeminiKey),
+                                  onPressed: () => setState(
+                                    () =>
+                                        _obscureGeminiKey = !_obscureGeminiKey,
+                                  ),
                                 ),
                               ),
                             ),
@@ -244,53 +264,20 @@ class _SettingsDialogState extends State<SettingsDialog> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Repositories to synchronize tasks from (e.g. "owner/repo").',
+                              'Comma-separated repositories to synchronize tasks from (e.g. "owner/repo").',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                             const SizedBox(height: 8),
                             TextFormField(
-                              controller: _newRepoController,
+                              controller: _reposController,
                               decoration: const InputDecoration(
-                                hintText: 'e.g. google/flutter (press Enter to add)',
-                                prefixIcon: Icon(Icons.book_outlined, size: 18, color: AppTheme.textMuted),
+                                hintText: 'e.g. python/cpython, dart-lang/http',
+                                prefixIcon: Icon(
+                                  Icons.book_outlined,
+                                  size: 18,
+                                  color: AppTheme.textMuted,
+                                ),
                               ),
-                              onFieldSubmitted: (_) => _addRepo(),
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: _monitoredRepos.isEmpty
-                                  ? [
-                                      Text(
-                                        'No monitored repositories added yet.',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontStyle: FontStyle.italic,
-                                          color: AppTheme.textPlaceholder,
-                                        ),
-                                      ),
-                                    ]
-                                  : _monitoredRepos.map((repo) {
-                                      return Chip(
-                                        label: Text(
-                                          repo,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: AppTheme.textPrimary,
-                                          ),
-                                        ),
-                                        avatar: const Icon(Icons.folder_outlined, size: 14, color: AppTheme.textMuted),
-                                        deleteIcon: const Icon(Icons.close, size: 14),
-                                        onDeleted: () => _removeRepo(repo),
-                                        backgroundColor: const Color(0xFFF3F4F6),
-                                        side: const BorderSide(color: AppTheme.borderSubtle),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                      );
-                                    }).toList(),
                             ),
                           ],
                         ),
@@ -306,12 +293,21 @@ class _SettingsDialogState extends State<SettingsDialog> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         OutlinedButton(
-                          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+                          onPressed: _isSaving
+                              ? null
+                              : () => Navigator.of(context).pop(),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppTheme.textSecondary,
-                            side: const BorderSide(color: AppTheme.borderMedium),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            side: const BorderSide(
+                              color: AppTheme.borderMedium,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
                           ),
                           child: const Text('Cancel'),
                         ),
@@ -322,14 +318,22 @@ class _SettingsDialogState extends State<SettingsDialog> {
                             backgroundColor: AppTheme.primaryBlue,
                             foregroundColor: Colors.white,
                             elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
                           ),
                           child: _isSaving
                               ? const SizedBox(
                                   width: 16,
                                   height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
                                 )
                               : const Text('Save Settings'),
                         ),
