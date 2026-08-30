@@ -10,41 +10,20 @@ class FirestoreService {
   FirestoreService({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  /// Real-time stream of prioritized tasks for the authenticated user.
-  Stream<List<TaskModel>> streamTasks(String uid) {
+  /// Real-time stream of prioritized tasks for the authenticated user with a dynamic limit.
+  Stream<List<TaskModel>> streamTasks(String uid, {int limit = 20}) {
     return _firestore
         .collection('users')
         .doc(uid)
         .collection('tasks')
+        .orderBy('priority', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snapshot) {
-      final tasks = snapshot.docs
+      return snapshot.docs
           .map((doc) => TaskModel.fromFirestore(doc))
           .toList();
-      // Sort descending by priority (highest priority first)
-      tasks.sort((a, b) => b.priority.compareTo(a.priority));
-      return tasks;
     });
-  }
-
-  /// Fetches a paginated page of prioritized tasks for the authenticated user.
-  Future<QuerySnapshot<Map<String, dynamic>>> fetchTasksPage({
-    required String uid,
-    int limit = 20,
-    DocumentSnapshot? startAfter,
-  }) async {
-    var query = _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('tasks')
-        .orderBy('priority', descending: true)
-        .limit(limit);
-
-    if (startAfter != null) {
-      query = query.startAfterDocument(startAfter);
-    }
-
-    return await query.get();
   }
 
   /// Fetches the user settings once.
