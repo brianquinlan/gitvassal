@@ -248,35 +248,13 @@ class _SettingsDialogState extends State<SettingsDialog> {
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                             const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _newRepoController,
-                                    decoration: const InputDecoration(
-                                      hintText: 'e.g. google/flutter',
-                                      prefixIcon: Icon(Icons.book_outlined, size: 18, color: AppTheme.textMuted),
-                                    ),
-                                    onFieldSubmitted: (_) => _addRepo(),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                ElevatedButton.icon(
-                                  onPressed: _addRepo,
-                                  icon: const Icon(Icons.add, size: 16),
-                                  label: const Text('Add'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFF3F4F6),
-                                    foregroundColor: AppTheme.textPrimary,
-                                    elevation: 0,
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(6),
-                                      side: const BorderSide(color: AppTheme.borderMedium),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            TextFormField(
+                              controller: _newRepoController,
+                              decoration: const InputDecoration(
+                                hintText: 'e.g. google/flutter (press Enter to add)',
+                                prefixIcon: Icon(Icons.book_outlined, size: 18, color: AppTheme.textMuted),
+                              ),
+                              onFieldSubmitted: (_) => _addRepo(),
                             ),
                             const SizedBox(height: 12),
                             Wrap(
