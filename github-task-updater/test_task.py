@@ -517,7 +517,9 @@ class TestTaskLifecycleAndSourceTracking(unittest.TestCase):
     def test_delete_all_user_tasks(self):
         mock_db = MagicMock()
         mock_tasks_col = MagicMock()
+        mock_batch = MagicMock()
         mock_db.collection.return_value.document.return_value.collection.return_value = mock_tasks_col
+        mock_db.batch.return_value = mock_batch
 
         doc1 = MagicMock()
         doc2 = MagicMock()
@@ -525,8 +527,9 @@ class TestTaskLifecycleAndSourceTracking(unittest.TestCase):
 
         deleted_count = delete_all_user_tasks("user_del_1", mock_db)
         self.assertEqual(deleted_count, 2)
-        doc1.reference.delete.assert_called_once()
-        doc2.reference.delete.assert_called_once()
+        mock_batch.delete.assert_any_call(doc1.reference)
+        mock_batch.delete.assert_any_call(doc2.reference)
+        mock_batch.commit.assert_called_once()
 
     def test_delete_task_for_issue(self):
         mock_db = MagicMock()
@@ -572,6 +575,25 @@ class TestTaskLifecycleAndSourceTracking(unittest.TestCase):
             merge=True,
         )
         mock_batch.commit.assert_called_once()
+
+    def test_mark_all_tasks_for_reranking_chunks_over_450(self):
+        mock_db = MagicMock()
+        mock_user_doc = MagicMock()
+        mock_tasks_col = MagicMock()
+        mock_batch1 = MagicMock()
+        mock_batch2 = MagicMock()
+
+        mock_db.collection.return_value.document.return_value = mock_user_doc
+        mock_user_doc.collection.return_value = mock_tasks_col
+        mock_db.batch.side_effect = [mock_batch1, mock_batch2]
+
+        docs = [MagicMock() for _ in range(500)]
+        mock_tasks_col.stream.return_value = docs
+
+        count = mark_all_tasks_for_reranking("user_chunks", mock_db)
+        self.assertEqual(count, 500)
+        self.assertEqual(mock_batch1.commit.call_count, 1)
+        self.assertEqual(mock_batch2.commit.call_count, 1)
 
     def test_cleanup_repo_tasks_deletes_monitored_only_tasks(self):
         mock_db = MagicMock()

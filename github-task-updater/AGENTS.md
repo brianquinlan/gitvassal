@@ -1,6 +1,6 @@
-# AGENTS.md - Marathon2 Architecture & Development Insights
+# AGENTS.md - GitVassal Architecture & Development Insights
 
-Essential context, architectural rules, and operational workflows for AI agents and developers working on Marathon2.
+Essential context, architectural rules, and operational workflows for AI agents and developers working on GitVassal.
 
 ---
 
@@ -14,7 +14,7 @@ Essential context, architectural rules, and operational workflows for AI agents 
 ## 🏗️ Architecture & Key Components
 
 ```
-marathon2/
+github-task-updater/
 ├── functions/
 │   ├── main.py              # Cloud Functions (Callable, HTTP, Task Queue, Firestore Triggers)
 │   ├── dev.py               # Jinja2 server-rendered dev debug and settings UI
@@ -35,7 +35,7 @@ marathon2/
 
 ### 1. PyGithub Module Disambiguation
 - **PyPI `PyGithub`** installs the top-level Python module `github` (`import github`).
-- The internal service file is named [`functions/github_sync.py`](file:///c:/Users/brian/marathon2/functions/github_sync.py) (NOT `github.py`) to prevent Python `sys.path` collisions where the local file shadows the library.
+- The internal service file is named [`functions/github_sync.py`](file:///c:/Users/brian/gitvassal/github-task-updater/functions/github_sync.py) (NOT `github.py`) to prevent Python `sys.path` collisions where the local file shadows the library.
 
 ### 2. Task & Issue Lifecycle
 - **Step 1**: `start_user_github_sync` schedules initial Task Queue jobs (`sync_github_issues_page`) for assigned, mentioned, created, and monitored repo issues.
@@ -46,7 +46,7 @@ marathon2/
 
 ### 3. AI Ranker (Pydantic AI)
 - Uses **Pydantic AI** (`pydantic_ai.Agent`) with structured output model `TaskPriorityOutput(priority, reasoning)`.
-- Uses synchronous execution (`agent.run_sync(...)`) with exponential backoff on 429/quota errors to guarantee compatibility with serverless worker lifecycles.
+- Uses synchronous execution (`agent.run_sync(...)`), delegating retries on transient quota/429 errors to Cloud Tasks automatic re-execution (`RetryConfig`) to avoid worker timeouts and idle billing.
 
 ### 4. Direct Property Access Over Defensive Introspection
 - Do **NOT** use `getattr(doc_snap, "exists")`, `hasattr(doc_snap, "to_dict")`, or `getattr(issue, "comments_url")`.

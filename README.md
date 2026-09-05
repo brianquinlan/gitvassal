@@ -28,8 +28,7 @@ gitvassal/
     │   ├── firebase_options.dart   # Multiplatform Firebase options for project gitvassal
     │   ├── models/                 # TaskModel and UserSettingsModel
     │   ├── services/               # AuthService (Google, GitHub, Emulator) & FirestoreService
-    │   ├── state/                  # AppState (navigation, search, filter)
-    │   └── ui/                     # Theme, widgets (AppHeader, Sidebar, TaskTable, TaskRow, SettingsDialog)
+    │   └── ui/                     # Theme, widgets (AppHeader, TaskTable, TaskRow, SettingsDialog)
     └── pubspec.yaml                # Flutter dependencies
 ```
 

@@ -6,11 +6,12 @@ Uses asynchronous chained Firebase Task Queue Functions (with seamless local fal
 3. Created issues (filter=created)
 4. Monitored repository issues (user.monitored_repos)
 
-NOTE: Tasks are ONLY created/updated once an Issue and all of its comments are fully imported into Firestore.
+NOTE: Tasks are created/updated directly in Firestore; issue metadata and comments are fetched in-memory on-demand during ranking.
 """
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime, timezone
 
@@ -34,7 +35,8 @@ def _parse_github_datetime(dt_val: object) -> datetime | None:
     if isinstance(dt_val, str):
         try:
             clean_str = dt_val.replace("Z", "+00:00")
-            return datetime.fromisoformat(clean_str)
+            parsed = datetime.fromisoformat(clean_str)
+            return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
         except Exception:
             return None
     return None
@@ -95,7 +97,14 @@ def fetch_single_issue_page(
         elif e.status == 404:
             return [], False
         raise
-    except Exception:
+    except Exception as exc:
+        logging.warning(
+            "Unexpected error fetching issues page %d (filter=%s, repo=%s): %s",
+            page,
+            filter_name,
+            repo_full_name,
+            exc,
+        )
         return [], False
 
 

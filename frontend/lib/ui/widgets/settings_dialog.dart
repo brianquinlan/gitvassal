@@ -33,6 +33,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   bool _isSaving = false;
   bool _obscureToken = true;
   bool _obscureGeminiKey = true;
+  UserSettingsModel? _currentSettings;
 
   @override
   void initState() {
@@ -46,9 +47,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
       final settings = await firestoreService.getUserSettings(widget.uid);
       if (mounted) {
         setState(() {
+          _currentSettings = settings;
           _tokenController.text = settings.githubAccessToken ?? '';
           _geminiKeyController.text = settings.geminiApiKey ?? '';
-          _reposController.text = settings.monitoredRepos.join(', ');
+          _reposController.text = settings.monitoredRepoNames.join(', ');
           _isLoading = false;
         });
       }
@@ -74,12 +76,16 @@ class _SettingsDialogState extends State<SettingsDialog> {
     try {
       final firestoreService = context.read<FirestoreService>();
 
-      // Parse comma-separated monitored repositories
-      final monitoredRepos = _reposController.text
+      // Parse comma-separated monitored repositories preserving existing timestamps
+      final enteredRepoNames = _reposController.text
           .split(',')
           .map((r) => r.trim())
-          .where((r) => r.isNotEmpty)
-          .toList();
+          .where((r) => r.isNotEmpty);
+
+      final Map<String, DateTime?> updatedRepos = {
+        for (final repo in enteredRepoNames)
+          repo: _currentSettings?.monitoredRepos[repo],
+      };
 
       final updatedSettings = UserSettingsModel(
         uid: widget.uid,
@@ -89,7 +95,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
         geminiApiKey: _geminiKeyController.text.trim().isEmpty
             ? null
             : _geminiKeyController.text.trim(),
-        monitoredRepos: monitoredRepos,
+        monitoredRepos: updatedRepos,
       );
 
       await firestoreService.updateUserSettings(widget.uid, updatedSettings);

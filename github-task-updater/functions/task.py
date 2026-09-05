@@ -148,26 +148,40 @@ def delete_task_for_issue(uid: str, issue_id: str, db: firestore.Client) -> bool
 
 def delete_all_user_tasks(uid: str, db: firestore.Client) -> int:
     """
-    Deletes all tasks for a given user from Firestore.
+    Deletes all tasks for a given user from Firestore using batched writes (<= 450 ops/batch).
     """
     tasks_col = db.collection("users").document(uid).collection("tasks")
     tasks_docs = tasks_col.stream()
     count = 0
+    batch = db.batch()
+    batch_count = 0
+
     for doc_snap in tasks_docs:
-        doc_snap.reference.delete()
+        batch.delete(doc_snap.reference)
         count += 1
+        batch_count += 1
+        if batch_count >= 450:
+            batch.commit()
+            batch = db.batch()
+            batch_count = 0
+
+    if batch_count > 0:
+        batch.commit()
+
     return count
 
 
 def mark_all_tasks_for_reranking(uid: str, db: firestore.Client) -> int:
     """
-    Marks all tasks for a given user as needing ranking.
+    Marks all tasks for a given user as needing ranking using batched writes (<= 450 ops/batch).
     The on_task_written trigger will automatically detect each task write and enqueue ranking.
     """
     tasks_col = db.collection("users").document(uid).collection("tasks")
     tasks_docs = tasks_col.stream()
     batch = db.batch()
     count = 0
+    batch_count = 0
+
     for doc_snap in tasks_docs:
         batch.set(
             doc_snap.reference,
@@ -175,7 +189,13 @@ def mark_all_tasks_for_reranking(uid: str, db: firestore.Client) -> int:
             merge=True,
         )
         count += 1
-    if count > 0:
+        batch_count += 1
+        if batch_count >= 450:
+            batch.commit()
+            batch = db.batch()
+            batch_count = 0
+
+    if batch_count > 0:
         batch.commit()
     return count
 
@@ -296,26 +316,7 @@ def force_rerank_tasks(uid: str, db: firestore.Client) -> dict[str, object]:
     Sets priority_needs_updated = True for all tasks in Firestore.
     The on_task_written trigger will automatically detect each task write and enqueue ranking.
     """
-    tasks_col = db.collection("users").document(uid).collection("tasks")
-    all_docs = tasks_col.stream()
-
-    batch = db.batch()
-    count = 0
-
-    for doc_snap in all_docs:
-        batch.set(
-            doc_snap.reference,
-            {
-                "priority_needs_updated": True,
-                "updated_at": firestore.SERVER_TIMESTAMP,
-            },
-            merge=True,
-        )
-        count += 1
-
-    if count > 0:
-        batch.commit()
-
+    count = mark_all_tasks_for_reranking(uid=uid, db=db)
     return {
         "status": "marked",
         "marked_count": count,
@@ -339,5 +340,5 @@ def get_user_tasks(uid: str, db: firestore.Client, limit: int = 100) -> list[dic
         tasks.append(t_dict)
 
     # Sort descending by priority
-    tasks.sort(key=lambda x: float(x.get("priority", 0.0)), reverse=True)  # type: ignore
+    tasks.sort(key=lambda x: float(x.get("priority") or 0.0), reverse=True)  # type: ignore
     return tasks

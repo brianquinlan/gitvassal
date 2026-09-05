@@ -55,21 +55,28 @@ void main() {
 
   group('UserSettingsModel Tests', () {
     test('UserSettingsModel maps to Firestore dictionary format', () {
+      final syncTime = DateTime(2026, 8, 20, 10, 0);
       final settings = UserSettingsModel(
         uid: 'user123',
         githubAccessToken: 'ghp_test123456789',
         githubUsername: 'octocat',
         geminiApiKey: 'AIzaSyTestKey',
-        monitoredRepos: ['google/flutter', 'dart-lang/http'],
+        monitoredRepos: {
+          'google/flutter': syncTime,
+          'dart-lang/http': null,
+        },
       );
+
+      expect(settings.monitoredRepoNames, containsAll(['google/flutter', 'dart-lang/http']));
 
       final map = settings.toFirestoreMap();
       expect(map['github_access_token'], equals('ghp_test123456789'));
       expect(map['github_username'], equals('octocat'));
       expect(map['gemini_api_key'], equals('AIzaSyTestKey'));
       expect(map['monitored_repos'], isA<Map>());
-      expect((map['monitored_repos'] as Map).containsKey('google/flutter'), isTrue);
-      expect((map['monitored_repos'] as Map).containsKey('dart-lang/http'), isTrue);
+      final repos = map['monitored_repos'] as Map<String, DateTime?>;
+      expect(repos['google/flutter'], equals(syncTime));
+      expect(repos['dart-lang/http'], isNull);
     });
   });
 }

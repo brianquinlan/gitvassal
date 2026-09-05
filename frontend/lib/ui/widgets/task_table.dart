@@ -25,6 +25,7 @@ class _TaskTableState extends State<TaskTable> {
 
   final ScrollController _scrollController = ScrollController();
   int _limit = _pageSize;
+  int _loadedCount = 0;
   bool _hasMore = true;
 
   @override
@@ -45,8 +46,9 @@ class _TaskTableState extends State<TaskTable> {
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.position.pixels;
 
-    // Trigger more items when scrolling within 250px of the bottom
-    if (currentScroll >= (maxScroll - 250) && _hasMore) {
+    // Trigger more items when scrolling within 250px of the bottom,
+    // guarded to ensure we don't escalate _limit before the current batch has arrived.
+    if (currentScroll >= (maxScroll - 250) && _hasMore && _loadedCount >= _limit) {
       setState(() {
         _limit += _pageSize;
       });
@@ -87,6 +89,7 @@ class _TaskTableState extends State<TaskTable> {
         }
 
         final tasks = snapshot.data ?? [];
+        _loadedCount = tasks.length;
         _hasMore = tasks.length >= _limit;
 
         if (tasks.isEmpty) {

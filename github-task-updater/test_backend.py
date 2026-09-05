@@ -158,9 +158,10 @@ class TestJinjaMainPageRendering(unittest.TestCase):
         self.assertIn("Login", html)
         self.assertIn("Sign in with Google", html)
 
+    @patch("dev.enqueue_task_ranking")
     @patch("dev.auth.verify_id_token")
     @patch("dev.db")
-    def test_render_main_page_authenticated_renders_ranked_tasks(self, mock_db, mock_verify):
+    def test_render_main_page_authenticated_renders_ranked_tasks(self, mock_db, mock_verify, mock_enqueue):
         mock_verify.return_value = {"uid": "user_jinja_1", "email": "tester@example.com", "name": "Tester Dev"}
 
         # Mock user document

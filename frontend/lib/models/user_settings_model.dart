@@ -6,7 +6,7 @@ class UserSettingsModel {
   final String? githubAccessToken;
   final String? githubUsername;
   final String? geminiApiKey;
-  final List<String> monitoredRepos;
+  final Map<String, DateTime?> monitoredRepos;
   final DateTime? updatedAt;
 
   UserSettingsModel({
@@ -14,9 +14,12 @@ class UserSettingsModel {
     this.githubAccessToken,
     this.githubUsername,
     this.geminiApiKey,
-    this.monitoredRepos = const [],
+    this.monitoredRepos = const {},
     this.updatedAt,
   });
+
+  /// Convenience getter for repository names.
+  List<String> get monitoredRepoNames => monitoredRepos.keys.toList();
 
   /// Factory constructor to parse a Firestore document snapshot.
   factory UserSettingsModel.fromFirestore(DocumentSnapshot doc) {
@@ -30,15 +33,11 @@ class UserSettingsModel {
       return null;
     }
 
-    // Parse monitored_repos which is stored as a Map or List in Firestore
-    List<String> parseMonitoredRepos(dynamic val) {
+    Map<String, DateTime?> parseMonitoredRepos(dynamic val) {
       if (val is Map) {
-        return val.keys.map((k) => k.toString().trim()).where((k) => k.isNotEmpty).toList();
+        return val.map((k, v) => MapEntry(k.toString().trim(), parseDate(v)));
       }
-      if (val is List) {
-        return val.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList();
-      }
-      return [];
+      return {};
     }
 
     return UserSettingsModel(
@@ -51,21 +50,13 @@ class UserSettingsModel {
     );
   }
 
-  /// Converts monitored repositories list into Firestore Map format { "owner/repo": null }
+  /// Converts model to Firestore document format.
   Map<String, dynamic> toFirestoreMap() {
-    final Map<String, dynamic> reposMap = {};
-    for (final repo in monitoredRepos) {
-      final clean = repo.trim();
-      if (clean.isNotEmpty) {
-        reposMap[clean] = null;
-      }
-    }
-
     return {
       'github_access_token': githubAccessToken?.trim().isEmpty ?? true ? null : githubAccessToken!.trim(),
       'github_username': githubUsername?.trim().isEmpty ?? true ? null : githubUsername!.trim(),
       'gemini_api_key': geminiApiKey?.trim().isEmpty ?? true ? null : geminiApiKey!.trim(),
-      'monitored_repos': reposMap,
+      'monitored_repos': monitoredRepos,
       'updated_at': FieldValue.serverTimestamp(),
     };
   }
