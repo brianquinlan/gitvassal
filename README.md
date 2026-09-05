@@ -4,36 +4,6 @@ GitVassal is a serverless GitHub issue prioritization and developer task trackin
 
 ---
 
-## 📁 Repository Structure
-
-```
-gitvassal/
-├── .firebaserc                     # Firebase project configuration (gitvassal)
-├── firebase.json                   # Root Firebase configuration for Functions, Firestore, Hosting & Emulators
-├── firestore.rules                 # Cloud Firestore security rules
-├── firestore.indexes.json          # Firestore composite indexes
-├── github-task-updater/            # Backend Firebase Cloud Functions & test suite
-│   ├── functions/
-│   │   ├── main.py                 # Cloud Functions (Callable, Task Queue, Firestore triggers)
-│   │   ├── task.py                 # Task model & Firestore operations
-│   │   ├── user.py                 # User profile schema
-│   │   ├── github_sync.py          # PyGithub pagination & issue synchronization
-│   │   ├── genai_ranker.py         # Pydantic AI task ranker with Gemini
-│   │   └── requirements.txt        # Backend dependencies
-│   ├── pyproject.toml              # Hatch / Ruff / Pyright configuration
-│   └── test_*.py                   # Backend unit and integration tests
-└── frontend/                       # Flutter Application (TaskVassal)
-    ├── lib/
-    │   ├── main.dart               # App entrypoint, emulator detection, Auth Gate
-    │   ├── firebase_options.dart   # Multiplatform Firebase options for project gitvassal
-    │   ├── models/                 # TaskModel and UserSettingsModel
-    │   ├── services/               # AuthService (Google, GitHub, Emulator) & FirestoreService
-    │   └── ui/                     # Theme, widgets (AppHeader, TaskTable, TaskRow, SettingsDialog)
-    └── pubspec.yaml                # Flutter dependencies
-```
-
----
-
 ## 🚀 Local Development
 
 ### 1. Start Firebase Emulators

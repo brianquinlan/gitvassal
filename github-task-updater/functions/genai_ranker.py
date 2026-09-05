@@ -95,7 +95,8 @@ PRs are higher priority than other issues.
 
 Issues created or commented-on by my usual collaborators are more important than issues created by strangers. Unless the collaborators indicate that the issue is not important.
 
-Issues with recent activity are higher priority than dormant issues."""
+Issues with recent activity are higher priority than dormant issues.
+"""
 
 
 def create_pydantic_ai_agent(
