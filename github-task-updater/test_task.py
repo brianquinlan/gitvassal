@@ -635,6 +635,250 @@ class TestTaskLifecycleAndSourceTracking(unittest.TestCase):
         doc3.reference.delete.assert_not_called()
         doc3.reference.set.assert_not_called()
 
+    def test_task_thumbs_down_at_fields(self):
+        from datetime import datetime, timezone
+
+        t_down = datetime(2026, 9, 4, 15, 0, 0, tzinfo=timezone.utc)
+        gh_up = datetime(2026, 9, 4, 16, 0, 0, tzinfo=timezone.utc)
+        task = Task(
+            owner="org",
+            repo="repo",
+            issue_number=42,
+            priority=0.0,
+            priority_needs_updated=False,
+            thumbs_down_at=t_down,
+            github_updated_at=gh_up,
+        )
+        self.assertEqual(task.thumbs_down_at, t_down)
+        self.assertEqual(task.github_updated_at, gh_up)
+        dumped = task.model_dump()
+        self.assertEqual(dumped["thumbs_down_at"], t_down)
+        self.assertEqual(dumped["github_updated_at"], gh_up)
+
+    def test_ensure_task_for_issue_suppresses_rerank_when_not_updated_after_thumbs_down(self):
+        from datetime import datetime, timezone
+
+        mock_db = MagicMock()
+        mock_task_ref = MagicMock()
+        mock_tasks_col = MagicMock()
+        mock_tasks_col.document.return_value = mock_task_ref
+        mock_db.collection.return_value.document.return_value.collection.return_value = mock_tasks_col
+
+        t_down = datetime(2026, 9, 4, 15, 0, 0, tzinfo=timezone.utc)
+        gh_up_old = datetime(2026, 9, 4, 14, 0, 0, tzinfo=timezone.utc)
+
+        mock_task_snap = MagicMock()
+        mock_task_snap.exists = True
+        mock_task_snap.to_dict.return_value = {
+            "owner": "org",
+            "repo": "repo",
+            "issue_number": 42,
+            "priority": 0.0,
+            "priority_needs_updated": False,
+            "thumbs_down_at": t_down,
+            "github_updated_at": gh_up_old,
+        }
+        mock_task_ref.get.return_value = mock_task_snap
+
+        ensure_task_for_issue(
+            uid="user_100",
+            issue_id="org_repo_42",
+            issue_data={
+                "title": "Unchanged Issue",
+                "github_updated_at": gh_up_old,
+            },
+            db=mock_db,
+        )
+        mock_task_ref.set.assert_called_once()
+        args, _ = mock_task_ref.set.call_args
+        # Should NOT trigger rerank; priority should remain 0.0
+        self.assertFalse(args[0]["priority_needs_updated"])
+        self.assertEqual(args[0]["priority"], 0.0)
+
+    def test_ensure_task_for_issue_triggers_rerank_when_updated_after_thumbs_down(self):
+        from datetime import datetime, timezone
+
+        mock_db = MagicMock()
+        mock_task_ref = MagicMock()
+        mock_tasks_col = MagicMock()
+        mock_tasks_col.document.return_value = mock_task_ref
+        mock_db.collection.return_value.document.return_value.collection.return_value = mock_tasks_col
+
+        t_down = datetime(2026, 9, 4, 15, 0, 0, tzinfo=timezone.utc)
+        gh_up_new = datetime(2026, 9, 4, 16, 0, 0, tzinfo=timezone.utc)
+
+        mock_task_snap = MagicMock()
+        mock_task_snap.exists = True
+        mock_task_snap.to_dict.return_value = {
+            "owner": "org",
+            "repo": "repo",
+            "issue_number": 42,
+            "priority": 0.0,
+            "priority_needs_updated": False,
+            "thumbs_down_at": t_down,
+            "github_updated_at": t_down,
+        }
+        mock_task_ref.get.return_value = mock_task_snap
+
+        ensure_task_for_issue(
+            uid="user_100",
+            issue_id="org_repo_42",
+            issue_data={
+                "title": "Updated Issue",
+                "github_updated_at": gh_up_new,
+            },
+            db=mock_db,
+        )
+        mock_task_ref.set.assert_called_once()
+        args, _ = mock_task_ref.set.call_args
+        # Should trigger rerank because gh_up_new > t_down
+        self.assertTrue(args[0]["priority_needs_updated"])
+
+    @patch("github_sync.fetch_issue_in_memory")
+    @patch("task.run_ranker")
+    def test_update_task_priority_propagates_thumbs_down_at_to_issue_payload(
+        self, mock_run_ranker, mock_fetch_in_memory
+    ):
+        from datetime import datetime, timezone
+
+        mock_db = MagicMock()
+        mock_user_doc = MagicMock()
+        mock_tasks_col = MagicMock()
+        mock_task_ref = MagicMock()
+
+        t_down = datetime(2026, 9, 4, 15, 0, 0, tzinfo=timezone.utc)
+
+        mock_task_snap = MagicMock()
+        mock_task_snap.exists = True
+        mock_task_snap.to_dict.return_value = {
+            "owner": "org",
+            "repo": "repo",
+            "issue_number": 42,
+            "priority": 0.0,
+            "priority_needs_updated": True,
+            "thumbs_down_at": t_down,
+        }
+        mock_task_ref.get.return_value = mock_task_snap
+
+        mock_in_memory_issue = IssuePayload(
+            issue={"title": "Issue 42", "body": "Body"},
+            comments=[],
+        )
+        mock_fetch_in_memory.return_value = mock_in_memory_issue
+
+        mock_user_snap = MagicMock()
+        mock_user_snap.exists = True
+        mock_user_snap.to_dict.return_value = {
+            "github_username": "brian_dev",
+            "github_access_token": "ghp_valid_token_123",
+            "gemini_api_key": "AIzaSyUserDocKey",
+        }
+        mock_user_doc.get.return_value = mock_user_snap
+
+        mock_user_doc.collection.return_value = mock_tasks_col
+        mock_tasks_col.document.return_value = mock_task_ref
+        mock_db.collection.return_value.document.return_value = mock_user_doc
+
+        ranked_mock_task = Task(owner="org", repo="repo", issue_number=42, priority=0.0, priority_needs_updated=False)
+        mock_run_ranker.return_value = ranked_mock_task
+
+        update_task_priority("user_100", "task_issue_42", mock_db)
+        mock_run_ranker.assert_called_once()
+        _args, kwargs = mock_run_ranker.call_args
+        issue_arg = kwargs.get("issue")
+        self.assertEqual(issue_arg.thumbs_down_at, t_down)
+
+
+class TestUtcStandardization(unittest.TestCase):
+    def test_to_utc_datetime_helper(self):
+        from datetime import datetime, timedelta, timezone
+
+        from task import to_utc_datetime
+
+        # 1. Naive datetime -> aware UTC
+        naive_dt = datetime(2026, 9, 5, 12, 0, 0)
+        utc_dt = to_utc_datetime(naive_dt)
+        self.assertIsNotNone(utc_dt)
+        self.assertEqual(utc_dt.tzinfo, timezone.utc)
+        self.assertEqual(utc_dt, datetime(2026, 9, 5, 12, 0, 0, tzinfo=timezone.utc))
+
+        # 2. Offset-aware non-UTC datetime -> converted to UTC
+        tz_offset = timezone(timedelta(hours=-5))
+        offset_dt = datetime(2026, 9, 5, 12, 0, 0, tzinfo=tz_offset)
+        converted = to_utc_datetime(offset_dt)
+        self.assertIsNotNone(converted)
+        self.assertEqual(converted.tzinfo, timezone.utc)
+        self.assertEqual(converted, datetime(2026, 9, 5, 17, 0, 0, tzinfo=timezone.utc))
+
+        # 3. ISO-8601 strings
+        iso_z = to_utc_datetime("2026-09-05T12:00:00Z")
+        self.assertEqual(iso_z, datetime(2026, 9, 5, 12, 0, 0, tzinfo=timezone.utc))
+
+        iso_offset = to_utc_datetime("2026-09-05T12:00:00-04:00")
+        self.assertEqual(iso_offset, datetime(2026, 9, 5, 16, 0, 0, tzinfo=timezone.utc))
+
+        # 4. Invalid or None
+        self.assertNull_or_none = self.assertIsNone(to_utc_datetime(None))
+        self.assertIsNone(to_utc_datetime(""))
+        self.assertIsNone(to_utc_datetime("not-a-datetime"))
+
+    def test_task_model_normalizes_all_timestamps_to_utc(self):
+        from datetime import datetime, timedelta, timezone
+
+        # Provide naive datetimes
+        naive_1 = datetime(2026, 9, 5, 10, 0, 0)
+        naive_2 = datetime(2026, 9, 5, 11, 0, 0)
+        offset_3 = datetime(2026, 9, 5, 8, 0, 0, tzinfo=timezone(timedelta(hours=-4)))
+
+        task = Task(
+            owner="org",
+            repo="repo",
+            issue_number=1,
+            created_at=naive_1,
+            updated_at=naive_2,
+            thumbs_down_at=naive_1,
+            github_updated_at=offset_3,
+        )
+
+        for field_name in ("created_at", "updated_at", "thumbs_down_at", "github_updated_at"):
+            val = getattr(task, field_name)
+            self.assertIsNotNone(val)
+            self.assertEqual(val.tzinfo, timezone.utc)
+
+        # Direct comparison must succeed without TypeError: can't compare offset-naive and offset-aware
+        self.assertGreater(task.github_updated_at, task.thumbs_down_at)
+
+    def test_user_model_normalizes_timestamps_to_utc(self):
+        from datetime import datetime, timezone
+
+        from user import User
+
+        naive_sync = datetime(2026, 9, 5, 9, 30, 0)
+        user = User(
+            uid="user_123",
+            last_assigned_sync=naive_sync,
+            last_mentioned_sync=naive_sync,
+            last_created_sync=naive_sync,
+            monitored_repos={"brian/repo": naive_sync},
+        )
+
+        self.assertEqual(user.last_assigned_sync.tzinfo, timezone.utc)
+        self.assertEqual(user.last_mentioned_sync.tzinfo, timezone.utc)
+        self.assertEqual(user.last_created_sync.tzinfo, timezone.utc)
+        self.assertEqual(user.monitored_repos["brian/repo"].tzinfo, timezone.utc)
+
+    def test_issue_payload_normalizes_thumbs_down_at_to_utc(self):
+        from datetime import datetime, timezone
+
+        naive_down = datetime(2026, 9, 5, 14, 0, 0)
+        payload = IssuePayload(
+            issue={"title": "Test Issue"},
+            comments=[],
+            thumbs_down_at=naive_down,
+        )
+        self.assertEqual(payload.thumbs_down_at.tzinfo, timezone.utc)
+        self.assertEqual(payload.thumbs_down_at, datetime(2026, 9, 5, 14, 0, 0, tzinfo=timezone.utc))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

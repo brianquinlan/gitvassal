@@ -7,10 +7,11 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from typing import Protocol, TypeVar
 
 import google.genai as genai
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_ai import Agent
 from pydantic_ai.capabilities import WebSearch
 from pydantic_ai.models.google import GoogleModel
@@ -34,6 +35,17 @@ class IssuePayload(BaseModel):
 
     issue: dict[str, object] = Field(default_factory=dict)
     comments: list[dict[str, object]] = Field(default_factory=list)
+    thumbs_down_at: datetime | None = Field(
+        default=None,
+        description="Timestamp when the user pressed thumbs-down to deprioritize this task, if applicable.",
+    )
+
+    @field_validator("thumbs_down_at", mode="after")
+    @classmethod
+    def _ensure_utc(cls, v: datetime | None) -> datetime | None:
+        if v is None:
+            return None
+        return v.astimezone(timezone.utc) if v.tzinfo else v.replace(tzinfo=timezone.utc)
 
 
 class TaskProtocol(Protocol):
@@ -68,6 +80,8 @@ If I indicated that I will take action on an issue and haven't yet done so, then
 When determining the priority of the issue, consider the nature of the issue itself. For example:
 - A feature request in nearly unused code is low priority.
 - A security vulnerability is highly-used code is very high priority.
+
+If `thumbs_down_at` is provided, I pressed the thumbs-down button on this task at that timestamp to indicate it was not high priority for me. If no significant new comments, mentions, or action items directed at me occurred after `thumbs_down_at`, assign a priority of 0.0. However, if there is important new activity after `thumbs_down_at` (especially if I was mentioned, asked for review, or needed for an action), re-evaluate the task on its merits and assign a priority accordingly.
 
 PRs are higher priority than other issues.
 

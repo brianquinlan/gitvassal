@@ -23,6 +23,7 @@ class TaskRow extends StatefulWidget {
 class _TaskRowState extends State<TaskRow> {
   bool _isHovered = false;
   bool _isRefreshing = false;
+  bool _isDeprioritizing = false;
 
   void _openIssueUrl() async {
     final urlStr = widget.task.githubIssueUrl ??
@@ -69,9 +70,41 @@ class _TaskRowState extends State<TaskRow> {
     }
   }
 
+  Future<void> _handleThumbsDown() async {
+    setState(() => _isDeprioritizing = true);
+    try {
+      final firestoreService = context.read<FirestoreService>();
+      await firestoreService.thumbsDownTask(widget.uid, widget.task.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deprioritized "${widget.task.displayTitle}" (priority set to 0.0)'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF475569),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deprioritizing task: $e'),
+            backgroundColor: AppTheme.dotRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDeprioritizing = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isRefreshing = _isRefreshing || widget.task.priorityNeedsUpdated;
+    final isThumbedDown = widget.task.thumbsDownAt != null;
 
     final isPR = widget.task.isPr;
     final IconData typeIcon = isPR ? Icons.merge_type : Icons.adjust;
@@ -159,36 +192,96 @@ class _TaskRowState extends State<TaskRow> {
 
             const SizedBox(width: 16),
 
-            // Actions Column
-            SizedBox(
-              width: 110,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: OutlinedButton.icon(
-                  onPressed: isRefreshing ? null : _handleRefresh,
-                  icon: isRefreshing
-                      ? const SizedBox(
-                          width: 12,
-                          height: 12,
-                          child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.textSecondary),
-                        )
-                      : const Icon(Icons.refresh, size: 14, color: AppTheme.textSecondary),
-                  label: Text(
-                    isRefreshing ? 'Queued' : 'Refresh',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    side: const BorderSide(color: AppTheme.borderMedium),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
+            // Priority Score Badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: widget.task.priorityNeedsUpdated
+                    ? const Color(0xFFF1F5F9)
+                    : (isThumbedDown
+                        ? const Color(0xFFF1F5F9)
+                        : const Color(0xFFEFF6FF)),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: widget.task.priorityNeedsUpdated
+                      ? AppTheme.borderMedium
+                      : (isThumbedDown
+                          ? AppTheme.borderMedium
+                          : const Color(0xFFBFDBFE)),
+                  width: 1,
                 ),
+              ),
+              child: Text(
+                widget.task.priority.toStringAsFixed(2),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: widget.task.priorityNeedsUpdated
+                      ? AppTheme.textMuted
+                      : (isThumbedDown
+                          ? AppTheme.textMuted
+                          : const Color(0xFF1D4ED8)),
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 16),
+
+            // Actions Column (Thumbs Down & Refresh)
+            SizedBox(
+              width: 155,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Thumbs Down Button
+                  IconButton(
+                    iconSize: 18,
+                    visualDensity: VisualDensity.compact,
+                    tooltip: isThumbedDown
+                        ? 'Deprioritized (priority 0.0)'
+                        : 'Deprioritize (thumbs down)',
+                    icon: _isDeprioritizing
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.textMuted),
+                          )
+                        : Icon(
+                            isThumbedDown ? Icons.thumb_down : Icons.thumb_down_outlined,
+                            size: 16,
+                            color: isThumbedDown ? AppTheme.dotRed : AppTheme.textMuted,
+                          ),
+                    onPressed: (_isDeprioritizing || isRefreshing) ? null : _handleThumbsDown,
+                  ),
+                  const SizedBox(width: 4),
+
+                  // Refresh Button
+                  OutlinedButton.icon(
+                    onPressed: isRefreshing ? null : _handleRefresh,
+                    icon: isRefreshing
+                        ? const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.textSecondary),
+                          )
+                        : const Icon(Icons.refresh, size: 14, color: AppTheme.textSecondary),
+                    label: Text(
+                      isRefreshing ? 'Queued' : 'Refresh',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      side: const BorderSide(color: AppTheme.borderMedium),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

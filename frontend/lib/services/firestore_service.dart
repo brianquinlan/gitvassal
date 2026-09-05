@@ -58,4 +58,20 @@ class FirestoreService {
       'updated_at': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
+
+  /// Sets priority to 0.0, records thumbs_down_at, and sets priority_needs_updated = false.
+  /// This deprioritizes the task until new activity occurs on GitHub after thumbs_down_at.
+  Future<void> thumbsDownTask(String uid, String taskId) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('tasks')
+        .doc(taskId)
+        .set({
+      'priority': 0.0,
+      'thumbs_down_at': FieldValue.serverTimestamp(),
+      'priority_needs_updated': false,
+      'updated_at': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
 }

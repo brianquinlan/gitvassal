@@ -27,9 +27,9 @@ class UserSettingsModel {
 
     DateTime? parseDate(dynamic val) {
       if (val == null) return null;
-      if (val is Timestamp) return val.toDate();
-      if (val is String) return DateTime.tryParse(val);
-      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      if (val is Timestamp) return val.toDate().toUtc();
+      if (val is String) return DateTime.tryParse(val)?.toUtc();
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val, isUtc: true);
       return null;
     }
 

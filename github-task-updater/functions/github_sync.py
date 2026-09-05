@@ -22,24 +22,10 @@ from google.cloud import firestore
 from queue_utils import dispatch_task
 
 from genai_ranker import IssuePayload
-from task import delete_task_for_issue, ensure_task_for_issue
+from task import delete_task_for_issue, ensure_task_for_issue, to_utc_datetime
 from user import User
 
-
-def _parse_github_datetime(dt_val: object) -> datetime | None:
-    """Parses ISO 8601 strings or timestamp objects into UTC datetime objects."""
-    if not dt_val:
-        return None
-    if isinstance(dt_val, datetime):
-        return dt_val if dt_val.tzinfo else dt_val.replace(tzinfo=timezone.utc)
-    if isinstance(dt_val, str):
-        try:
-            clean_str = dt_val.replace("Z", "+00:00")
-            parsed = datetime.fromisoformat(clean_str)
-            return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
-        except Exception:
-            return None
-    return None
+_parse_github_datetime = to_utc_datetime
 
 
 # ============================================================================
@@ -176,6 +162,7 @@ def process_and_save_issue_page(
             "repo": repo,
             "issue_number": issue_number,
             "is_pr": is_pr,
+            "github_updated_at": to_utc_datetime(issue.updated_at),
         }
 
         # Create/update Task directly in Firestore

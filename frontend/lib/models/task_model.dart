@@ -14,6 +14,7 @@ class TaskModel {
   final List<String> sources;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final DateTime? thumbsDownAt;
 
   TaskModel({
     required this.id,
@@ -28,6 +29,7 @@ class TaskModel {
     this.sources = const [],
     this.createdAt,
     this.updatedAt,
+    this.thumbsDownAt,
   });
 
   /// Factory constructor to parse a Firestore document snapshot into [TaskModel].
@@ -36,9 +38,9 @@ class TaskModel {
 
     DateTime? parseDate(dynamic val) {
       if (val == null) return null;
-      if (val is Timestamp) return val.toDate();
-      if (val is String) return DateTime.tryParse(val);
-      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      if (val is Timestamp) return val.toDate().toUtc();
+      if (val is String) return DateTime.tryParse(val)?.toUtc();
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val, isUtc: true);
       return null;
     }
 
@@ -70,6 +72,7 @@ class TaskModel {
       sources: parseSources(data['sources']),
       createdAt: parseDate(data['created_at']),
       updatedAt: parseDate(data['updated_at']),
+      thumbsDownAt: parseDate(data['thumbs_down_at']),
     );
   }
 
@@ -105,6 +108,7 @@ class TaskModel {
       'sources': sources,
       'created_at': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
       'updated_at': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      'thumbs_down_at': thumbsDownAt != null ? Timestamp.fromDate(thumbsDownAt!) : null,
     };
   }
 }

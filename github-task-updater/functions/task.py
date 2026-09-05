@@ -5,14 +5,30 @@ and dispatches asynchronous ranking tasks using Firebase Task Queue Functions (f
 See: https://firebase.google.com/docs/functions/task-functions#python
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from firebase_admin import functions as admin_functions
 from google.cloud import firestore
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from queue_utils import dispatch_task
 
 from genai_ranker import run_ranker
+
+
+def to_utc_datetime(v: object) -> datetime | None:
+    """Converts a datetime or ISO-8601 string to a timezone-aware UTC datetime."""
+    if not v:
+        return None
+    if isinstance(v, datetime):
+        return v.astimezone(timezone.utc) if v.tzinfo else v.replace(tzinfo=timezone.utc)
+    if isinstance(v, str):
+        try:
+            clean_str = v.replace("Z", "+00:00")
+            parsed = datetime.fromisoformat(clean_str)
+            return parsed.astimezone(timezone.utc) if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+        except (ValueError, TypeError):
+            return None
+    return None
 
 
 class Task(BaseModel):
@@ -33,6 +49,19 @@ class Task(BaseModel):
     sources: list[str] = Field(default_factory=list)  # e.g. ["assigned", "mentioned", "created", "monitored"]
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    thumbs_down_at: datetime | None = None
+    github_updated_at: datetime | None = None
+
+    @field_validator(
+        "created_at",
+        "updated_at",
+        "thumbs_down_at",
+        "github_updated_at",
+        mode="after",
+    )
+    @classmethod
+    def _ensure_utc(cls, v: datetime | None) -> datetime | None:
+        return to_utc_datetime(v)
 
     @property
     def doc_id(self) -> str:
@@ -98,12 +127,13 @@ def ensure_task_for_issue(
     issue_number = int(raw_num) if isinstance(raw_num, (int, str)) and str(raw_num).isdigit() else None
     is_pr = bool(issue_data.get("is_pr", False))
 
+    github_updated_at = to_utc_datetime(issue_data.get("github_updated_at"))
+
     if doc_snap.exists:
         raw_dict = doc_snap.to_dict()
         if not isinstance(raw_dict, dict):
             raw_dict = {}
         task = Task.model_validate(raw_dict)
-        task.priority_needs_updated = True
         task.is_pr = is_pr or task.is_pr
         task.github_issue_title = issue_title or task.github_issue_title
         task.github_issue_url = issue_url or task.github_issue_url
@@ -112,6 +142,18 @@ def ensure_task_for_issue(
         task.issue_number = issue_number or task.issue_number
         if source and source not in task.sources:
             task.sources.append(source)
+        if github_updated_at:
+            task.github_updated_at = github_updated_at
+
+        if task.thumbs_down_at is not None:
+            # If the user pressed thumbs down, only re-evaluate if updated on GitHub strictly after thumbs_down_at
+            if task.github_updated_at and task.github_updated_at > task.thumbs_down_at:
+                task.priority_needs_updated = True
+            else:
+                task.priority_needs_updated = False
+                task.priority = 0.0
+        else:
+            task.priority_needs_updated = True
     else:
         task = Task(
             priority=0.0,
@@ -122,6 +164,7 @@ def ensure_task_for_issue(
             issue_number=issue_number,
             github_issue_title=issue_title,
             github_issue_url=issue_url,
+            github_updated_at=github_updated_at,
             sources=[source] if source else [],
         )
 
@@ -264,7 +307,7 @@ def update_task_priority(uid: str, task_id: str, db: firestore.Client) -> None:
     from genai_ranker import IssuePayload
     from github_sync import fetch_issue_in_memory
 
-    issue_payload: IssuePayload | dict[str, object] | None = None
+    issue_payload: IssuePayload | None = None
     owner = task.owner
     repo = task.repo
     num = task.issue_number
@@ -290,13 +333,17 @@ def update_task_priority(uid: str, task_id: str, db: firestore.Client) -> None:
         except Exception:
             pass
 
-    # If in-memory fetch wasn't available, provide basic fallback dict from task cached fields
+    # If in-memory fetch wasn't available, provide basic fallback IssuePayload from task cached fields
     if not issue_payload:
-        issue_payload = {
-            "title": task.github_issue_title,
-            "url": task.github_issue_url,
-            "comments": [],
-        }
+        issue_payload = IssuePayload(
+            issue={
+                "title": task.github_issue_title,
+                "url": task.github_issue_url,
+            },
+            comments=[],
+        )
+
+    issue_payload.thumbs_down_at = task.thumbs_down_at
 
     ranked_task = run_ranker(
         task=task, issue=issue_payload, github_username=github_username, gemini_api_key=gemini_api_key
