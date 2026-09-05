@@ -12,6 +12,7 @@ from typing import Protocol, TypeVar
 import google.genai as genai
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_ai import Agent
+from pydantic_ai.capabilities import WebSearch
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.providers.google import GoogleProvider
 
@@ -62,6 +63,12 @@ An issue is not actionable if:
 - I am waiting for another party to take action, such as respond to a question or address code review comments.
 - In general, an issue is not actionable if I was the last person to act.
 
+If I indicated that I will take action on an issue and haven't yet done so, then it is higher priority. Don't let me drop the ball.
+
+When determining the priority of the issue, consider the nature of the issue itself. For example:
+- A feature request in nearly unused code is low priority.
+- A security vulnerability is highly-used code is very high priority.
+
 PRs are higher priority than other issues.
 
 Issues created or commented-on by my usual collaborators are more important than issues created by strangers. Unless the collaborators indicate that the issue is not important.
@@ -70,7 +77,8 @@ Issues with recent activity are higher priority than dormant issues."""
 
 
 def create_pydantic_ai_agent(
-    api_key: str | None = None, system_prompt: str | None = None
+    api_key: str | None = None,
+    system_prompt: str | None = None,
 ) -> Agent[None, TaskPriorityOutput]:
     """
     Creates an ephemeral Pydantic AI Agent instance configured with the Google Gemini model.
@@ -82,12 +90,18 @@ def create_pydantic_ai_agent(
 
     client = genai.Client(api_key=effective_key)
     provider = GoogleProvider(client=client)
-    model = GoogleModel("gemini-3.7-flash", provider=provider)
-    return Agent(model=model, output_type=TaskPriorityOutput, system_prompt=prompt_str)
+    model = GoogleModel("gemini-3.8-flash", provider=provider)
+    return Agent(
+        model=model,
+        output_type=TaskPriorityOutput,
+        system_prompt=prompt_str,
+        capabilities=[WebSearch()],
+    )
 
 
 def get_pydantic_ai_agent(
-    api_key: str | None = None, system_prompt: str | None = None
+    api_key: str | None = None,
+    system_prompt: str | None = None,
 ) -> Agent[None, TaskPriorityOutput]:
     """
     Backwards-compatible alias for creating an ephemeral Pydantic AI Agent.
@@ -104,7 +118,7 @@ def run_ranker(
 ) -> TTask:
     """
     Ranker engine that computes priority for a single task using Pydantic AI
-    and the latest Gemini Flash model ('gemini-3.7-flash').
+    and the latest Gemini Flash model ('gemini-3.8-flash').
     Accepts full structured issue and comments JSON, the current user's GitHub username,
     and the user's Gemini API key.
     """
